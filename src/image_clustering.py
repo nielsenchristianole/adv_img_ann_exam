@@ -19,20 +19,6 @@ params = dict(
         k = 2,
         mode='gray'
     ),
-#     bag = dict(
-#         img_downscale = 6,
-#         radius = 100,
-#         sigma_i = 0.5,
-#         sigma_x = 145,
-#         k = 2
-#     ),
-    # onion = dict(
-    #     img_downscale = 6,
-    #     radius = 100,
-    #     sigma_i = 0.5,
-    #     sigma_x = 145,
-    #     k = 5
-    # ),
     peppers = dict(
         img_downscale = 6,
         radius = float('inf'),
@@ -193,8 +179,8 @@ colors = np.array([
 ], dtype=float)
 
 
+# plot segmentations
 fig, axs = plt.subplots(3, 3, figsize=(15, 15))
-axs = axs if len(axs.shape) == 2 else np.array([axs])
 
 metrices = [w_ij, w_i, w_x]
 for row, (similarity_matrix, _axs) in enumerate(zip(metrices, axs)):
@@ -242,3 +228,43 @@ for idx, (ax, encoding) in enumerate(zip(axs.flatten(), encodings.T), start=2):
 fig.tight_layout()
 fig.savefig(f'results/{IMAGE_NAME}_eig_vecs.pdf', bbox_inches='tight', pad_inches=0)
 plt.show()
+
+
+# plots segmentations sparse
+# fig, axs = plt.subplots(2, 3, figsize=(10, 15))
+# metrices = [w_ij, w_i, w_x]
+# for row, (similarity_matrix, _axs) in enumerate(zip(metrices, axs.T)):
+#     labels, _encodings = cluster(similarity_matrix, k, return_encodings=True)
+#     segmented_img = labels.reshape(before_shape)
+#     colored_segmentations = colors[segmented_img]
+#     colored_image = colored_segmentations * img_gray[:, :, None]
+
+#     _axs[0].imshow(colored_image)
+#     _axs[1].imshow(colored_segmentations)
+
+#     if row == 0:
+#         _axs[0].set_ylabel('Colored by cluster')
+#         _axs[1].set_ylabel('Segmentations')
+
+#     _axs[0].set_xlabel(('Joint', 'Intensity', 'Spatial')[row])
+# for ax in axs.flatten():
+#     # ax.axis('off')
+#     ax.set_xticks([])
+#     ax.set_yticks([])
+#     ax.xaxis.set_label_position('top')
+# fig.tight_layout()
+# fig.savefig(f'results/{IMAGE_NAME}_segmented_sparse.pdf', bbox_inches='tight', pad_inches=0)
+
+# show all images
+num_imgs = len(params)
+fig, axs = plt.subplots(1, num_imgs, figsize=(5*num_imgs, 5))
+for ax, img_name in zip(axs.flatten(), params.keys()):
+    img_raw = cv2.imread(f'spectral_data/spectral_data/{img_name}.png')
+    img_raw = cv2.resize(img_raw, (img_raw.shape[1]//img_downscale, img_raw.shape[0]//img_downscale))
+
+    img_col = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB).astype(float) / 255
+    ax.imshow(img_col)
+    ax.axis('off')
+    ax.set_title(img_name)
+fig.tight_layout()
+fig.savefig(f'results/all_images.pdf', bbox_inches='tight', pad_inches=0)
