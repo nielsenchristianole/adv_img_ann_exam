@@ -50,7 +50,7 @@ if __name__ == "__main__":
     snb.set_style("darkgrid")
     plt.rcParams["axes.grid"] = False
 
-    fig, ax = plt.subplots(4, 5, figsize=(20, 16))
+    fig, ax = plt.subplots(8, 5, figsize=(5*4, 8*4))
 
     points = loadmat("../spectral_data/spectral_data/points_data.mat")["points"]
 
@@ -86,11 +86,24 @@ if __name__ == "__main__":
 
         U = rw_evectors[:, 1:k+1]
 
+        colors = np.copy(U)
+        colors -= np.min(colors, axis=0)
+        colors /= np.max(colors, axis=0)
+        colors = np.pad(colors, ((0, 0), (0, (3 - colors.shape[1]))))
+        ax[2, i].scatter(points[0, i][:, 0], points[0, i][:, 1], c=colors, s=5)
+
+        ax[3, i].scatter(points[0, i][:, 0], points[0, i][:, 1], c=np.vstack((colors[:, 0], colors[:, 0], colors[:, 0])).T, s=5)
+        ax[4, i].scatter(points[0, i][:, 0], points[0, i][:, 1], c=np.vstack((colors[:, 1], colors[:, 1], colors[:, 1])).T, s=5)
+        if k == 3:
+            ax[5, i].scatter(points[0, i][:, 0], points[0, i][:, 1], c=np.vstack((colors[:, 2], colors[:, 2], colors[:, 2])).T, s=5)
+        else:
+            ax[5, i].axis('off')
+
         kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
         labels = kmeans.labels_
 
-        ax[2, i].matshow(similarity_matrix)
-        ax[3, i].matshow(similarity_matrix[labels.argsort()][:, labels.argsort()])
+        ax[6, i].matshow(similarity_matrix)
+        ax[7, i].matshow(similarity_matrix[labels.argsort()][:, labels.argsort()])
 
         plot_clusters(points[0, i], labels, ax[1, i])
 
