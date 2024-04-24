@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans
 from pylanczos import PyLanczos
 
 
-IMAGE_NAME = 'plane'
+IMAGE_NAME = 'peppers'
 
 
 params = dict(
@@ -26,20 +26,20 @@ params = dict(
 #         sigma_x = 145,
 #         k = 2
 #     ),
-    onion = dict(
-        img_downscale = 6,
-        radius = 100,
-        sigma_i = 0.5,
-        sigma_x = 145,
-        k = 5
-    ),
+    # onion = dict(
+    #     img_downscale = 6,
+    #     radius = 100,
+    #     sigma_i = 0.5,
+    #     sigma_x = 145,
+    #     k = 5
+    # ),
     peppers = dict(
         img_downscale = 6,
-        radius = 100,
-        sigma_i = 0.5,
+        radius = float('inf'),
+        sigma_i = 0.8,
         sigma_x = 145,
         k = 5,
-        mode='hsv'
+        mode='rgb'
     )
 )
 
