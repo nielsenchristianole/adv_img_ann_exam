@@ -37,7 +37,7 @@ params = dict(
         img_downscale = 6,
         radius = float('inf'),
         sigma_i = 0.8,
-        sigma_x = 145,
+        sigma_x = 9,
         k = 5,
         mode='rgb'
     )
