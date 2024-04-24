@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 
 
-IMAGE_NAME = 'peppers'
+IMAGE_NAME = 'plane'
 
 
 params = dict(
@@ -36,7 +36,7 @@ params = dict(
         sigma_i = 0.5,
         sigma_x = 145,
         k = 5,
-        mode='color'
+        mode='hsv'
     )
 )
 
@@ -49,27 +49,68 @@ k = params[IMAGE_NAME]['k']
 mode = params[IMAGE_NAME]['mode']
 
 
-def cluster(similarity_matrix: np.ndarray, k: int) -> np.ndarray:
+def unnormalized_spectral_clustering(similarity_matrix: np.ndarray, k: int) -> np.ndarray:
 
-    degrees = np.count_nonzero(similarity_matrix, axis=1)
-    degree_matrix = np.diag(degrees)
-    laplacian = degree_matrix - similarity_matrix
+    volume = np.sum(similarity_matrix, axis=1)
 
-    sqrt_degree_matrix = np.diag(1 / np.sqrt(degrees))
-    inv_degree_matrix = np.diag(1 / degrees)
+    D = np.diag(volume)
+    L = D - similarity_matrix
 
-    laplacian_sym = sqrt_degree_matrix @ laplacian @ sqrt_degree_matrix
-    laplacian_rw = inv_degree_matrix @ laplacian
+    eig_val, eig_vec = np.linalg.eigh(L)
 
-    evalues, evectors = np.linalg.eigh(laplacian_sym)
-
-    rw_evectors = sqrt_degree_matrix @ evectors
-
-    U = evectors[:, :k]
-    U = U / np.linalg.norm(U, axis=1, keepdims=True)
+    U = eig_vec[:, 1:1+k]
 
     kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
     return kmeans.labels_
+
+
+def normalized_spectral_clustering(similarity_matrix: np.ndarray, k: int) -> np.ndarray:
+
+    volume = np.sum(similarity_matrix, axis=1)
+
+    D = np.diag(volume)
+    L = D - similarity_matrix
+
+    D_sqrt = np.diag(np.sqrt(volume))
+    D_sqrt_inv = np.diag(1 / np.sqrt(volume))
+    # D_inv = np.diag(1 / d_i)
+
+    L_sym = D_sqrt_inv @ L @ D_sqrt_inv
+    # L_rw = D_inv @ L
+
+    eig_val, eig_vec = np.linalg.eigh(L_sym)
+
+    # rw_eig_vec = D_sqrt @ eig_vec
+    rw_eig_vec = D_sqrt_inv @ eig_vec
+
+    U = rw_eig_vec[:, 1:1+k]
+
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
+    return kmeans.labels_
+
+
+def normalized_spectral_clustering_advanced(similarity_matrix: np.ndarray, k: int) -> np.ndarray:
+
+    volume = np.sum(similarity_matrix, axis=1)
+
+    D = np.diag(volume)
+    L = D - similarity_matrix
+
+    D_sqrt = np.diag(np.sqrt(volume))
+    D_sqrt_inv = np.diag(1 / np.sqrt(volume))
+    # D_inv = np.diag(1 / d_i)
+
+    L_sym = D_sqrt_inv @ L @ D_sqrt_inv
+    # L_rw = D_inv @ L
+
+    eig_val, eig_vec = np.linalg.eigh(L_sym)
+    T = eig_vec / np.linalg.norm(eig_vec, axis=1, keepdims=True)
+
+    U = T[:, 1:1+k]
+
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(U)
+    return kmeans.labels_
+
 
 
 # load image
@@ -79,13 +120,21 @@ img_raw = cv2.resize(img_raw, (img_raw.shape[1]//img_downscale, img_raw.shape[0]
 img_gray = cv2.cvtColor(img_raw, cv2.COLOR_BGR2GRAY).astype(float) / 255
 img_col = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB).astype(float) / 255
 
-img = img_gray if mode == 'gray' else img_col
+if mode == 'gray':
+    img = img_gray
+elif mode == 'rgb':
+    img = img_col
+elif mode == 'hsv':
+    # remove the value channel
+    img = cv2.cvtColor(img_raw, cv2.COLOR_BGR2HSV)[:,:,:2].astype(float) / 255
 
 # get params
 before_shape = img_gray.shape
 mat_lenth = np.prod(before_shape)
 if mode == 'gray':
     img = img.reshape(-1)[..., None]
+elif mode == 'hsv':
+    img = img.reshape(-1, 2)
 else:
     img = img.reshape(-1, 3)
 
@@ -141,16 +190,24 @@ fig, axs = plt.subplots(3, 3, figsize=(15, 15))
 # fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 axs = axs if len(axs.shape) == 2 else np.array([axs])
 
-for row, (similarity_matrix, _axs) in enumerate(zip([w_ij, w_i, w_x], axs)):
-    labels = cluster(similarity_matrix, k)
+metrices = [w_ij, w_i, w_x]
+metrices = 3*[w_ij]
+clustering_methods = [unnormalized_spectral_clustering, normalized_spectral_clustering, normalized_spectral_clustering_advanced]
+
+for row, (_cluster_fn, similarity_matrix, _axs) in enumerate(zip(clustering_methods, metrices, axs)):
+    labels = _cluster_fn(similarity_matrix, k)
     segmented_img = labels.reshape(before_shape)
     colored_segmentations = colors[segmented_img]
     colored_image = colored_segmentations * img_gray[:, :, None]
 
     if mode == 'gray':
         _axs[0].imshow(img_gray, cmap='gray')
-    else:
+    elif mode == 'rgb':
         _axs[0].imshow(img_col)
+    elif mode == 'hsv':
+        _axs[0].imshow(img_col)
+    else:
+        raise NotImplementedError()
     _axs[1].imshow(colored_image)
     _axs[2].imshow(colored_segmentations)
 
@@ -159,7 +216,7 @@ for row, (similarity_matrix, _axs) in enumerate(zip([w_ij, w_i, w_x], axs)):
         _axs[1].set_xlabel('Colored by cluster')
         _axs[2].set_xlabel('Segmentations')
     
-    _axs[0].set_ylabel(('Intensity', 'Spatial', 'Joint')[row])
+    _axs[0].set_ylabel(('Joint', 'Intensity', 'Spatial')[row])
 
 for ax in axs.flatten():
     # ax.axis('off')
